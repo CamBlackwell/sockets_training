@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
- #include <poll.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -51,7 +51,7 @@ int main(){
     printf("server set up and listening on port %d\n", PORT);
 
 
-    for (int i = 0; i < MAX_CLIENTS; i++){
+    for (int i = 0; i <= MAX_CLIENTS; i++){
         clients[i].fd = -1; //initialise all clients to being empty
     }
 
@@ -111,21 +111,34 @@ int main(){
                     continue;
                 }            
 
-                printf("recieved %s", buffer);
-                if (send(clients[i].fd, buffer, bytes_read, 0) <= 0){ //sends message back to sender
-                    perror("send failed");
-                    break;
+                printf("received %s", buffer);
+                printf("Broadcasting to others... i=%d\n", i);
+
+                for (int j = 1; j <= MAX_CLIENTS; j++){
+                    printf("Checking slot %d: fd=%d\n", j, clients[j].fd);
+                    
+                    if(clients[j].fd != -1 && j != i){
+                        printf("Actually sending to slot %d\n", j);
+                        
+                        if (send(clients[j].fd, buffer, bytes_read, 0) <= 0){
+                            perror("send failed");
+                            close(clients[j].fd);
+                            clients[j].fd = -1;
+                            num_clients--;
+                        }
+                    }
                 }
-                
+                    
             }
         }
 
         }
 
     for (int i = 0; i <= MAX_CLIENTS; i++){
-        close(clients[i].fd);
+        if (clients[i].fd != -1){
+            close(clients[i].fd);
+        }
     }
-    close(server_fd);
     return 0;
 
 }

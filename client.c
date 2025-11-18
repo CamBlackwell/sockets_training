@@ -2,6 +2,7 @@
 #include <stdlib.h> 
 #include <string.h> 
 #include <unistd.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -38,20 +39,40 @@ int main(){
 
     printf("connected to server. type messages CTRL D to quit :)\n");
 
-    while(fgets(buffer, BUFFER_SIZE, stdin) != NULL ){ //loops and puts stdin into buffer
-        if (send(client_fd, buffer, strlen(buffer), 0) < 0){
-            perror("send error");
+    struct pollfd fds[2];
+    fds[0].fd = STDIN_FILENO; //keyboard input
+    fds[0].events = POLLIN;
+    fds[1].fd = client_fd;
+    fds[1].events = POLLIN;
+
+    while(1){
+        int ready = poll(fds, 2, -1);
+        if (ready < 0){
+            perror("poll error");
             break;
         }
 
-        memset(buffer, 0, BUFFER_SIZE);
-        bytes_read = recv(client_fd, buffer, BUFFER_SIZE-1, 0);
-        if (bytes_read <= 0){
-            printf("server disconnected");
-            break;
+        if (fds[0].revents & POLLIN){
+            if(fgets(buffer, BUFFER_SIZE, stdin) == NULL){
+                printf("Disconnecting...");
+                break;
+            }
+            if (send(client_fd, buffer, strlen(buffer), 0) < 0){
+                perror("send error");
+                break;
+            }
         }
 
-        printf("server echoes: %s", buffer);
+        if (fds[1].revents & POLLIN){
+            memset(buffer, 0, BUFFER_SIZE);
+            bytes_read = recv(client_fd, buffer, BUFFER_SIZE-1, 0);
+            if (bytes_read <= 0){
+                printf("server disconnected");
+                break;
+            }
+            printf("SERVER: %s\n", buffer);
+            fflush(stdout);
+        }
 
     }
     close(client_fd);
