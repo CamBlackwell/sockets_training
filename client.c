@@ -6,8 +6,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define PORT 8888;
-#define BUFFER_SIZE 1024;
+#define PORT 8888
+#define BUFFER_SIZE 1024
 
 int main(){
     int client_fd;
@@ -26,12 +26,12 @@ int main(){
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(PORT);
 
-    if (inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr) < 0){ //turns to binary //SWITCH THIS AFTER IT WORKS TO MULTIPLE DEVICES
+    if (inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr) <= 0){ //turns to binary //SWITCH THIS AFTER IT WORKS TO MULTIPLE DEVICES
         perror("invalid address");
         exit(1);
     }
 
-    if (connect(client_addr, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0){
+    if (connect(client_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0){
         perror("failed to connect");
         exit(1);
     }
@@ -39,14 +39,14 @@ int main(){
     printf("connected to server. type messages CTRL D to quit :)\n");
 
     while(fgets(buffer, BUFFER_SIZE, stdin) != NULL ){ //loops and puts stdin into buffer
-        if (send(client_fd, buffer, BUFFER_SIZE) < 0)[
+        if (send(client_fd, buffer, strlen(buffer), 0) < 0){
             perror("send error");
             break;
-        ]
+        }
 
         memset(buffer, 0, BUFFER_SIZE);
-        bytes_read = recv(sock_fd, buffer, BUFFER_SIZE-1, 0);
-        if (bytes_read < 0){
+        bytes_read = recv(client_fd, buffer, BUFFER_SIZE-1, 0);
+        if (bytes_read <= 0){
             printf("server disconnected");
             break;
         }
@@ -54,6 +54,6 @@ int main(){
         printf("server echoes: %s", buffer);
 
     }
-    close(client_addr);
+    close(client_fd);
     return 0;
 }
