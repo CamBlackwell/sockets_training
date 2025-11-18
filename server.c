@@ -12,7 +12,7 @@
 int main(){
     int server_fd, client_fd;
     struct sockaddr_in server_addr, client_addr;
-    struct client_len;
+    socklen_t client_len;
 
     char buffer[BUFFER_SIZE];
     int bytes_read;
@@ -47,7 +47,7 @@ int main(){
     printf("server set up and listening on port %d\n", PORT);
 
     client_len = sizeof(client_addr);
-    client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_addr); //creates a new socket to handle clients
+    client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len); //creates a new socket to handle clients
     if (client_fd < 0){
         perror("accept failed");
         exit(1);
@@ -61,7 +61,7 @@ int main(){
         
         if (bytes_read <= 0){
             if (bytes_read == 0){
-                printf("client disconnected\n")
+                printf("client disconnected\n");
             } else {
                 perror("recv error");
             }
@@ -69,7 +69,7 @@ int main(){
         }            
 
         printf("recieved %s", buffer);
-        if (send(client_fd, bytes_read, 0) <= 0){ //sends message back to sender
+        if (send(client_fd, buffer, bytes_read, 0) <= 0){ //sends message back to sender
             perror("send failed");
             break;
         }
