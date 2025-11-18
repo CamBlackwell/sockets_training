@@ -26,7 +26,7 @@ int main(){
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(PORT);
 
-    if (inet_pton(AF_INET, "192.168.x.x", &server_addr.sin_addr) <= 0){ //turns to binary 
+    if (inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr) <= 0){ //turns to binary 
         perror("invalid address");
         exit(1);
     }

@@ -2,14 +2,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+ #include <poll.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#define MAX_CLIENTS 5
 #define BUFFER_SIZE 1024
 #define PORT 8888
 
 int main(){
+    struct pollfd clients[MAX_CLIENTS + 1]; //+1 for the server 
+    int num_clients = 0;
     int server_fd, client_fd;
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_len;
@@ -46,36 +50,81 @@ int main(){
 
     printf("server set up and listening on port %d\n", PORT);
 
-    client_len = sizeof(client_addr);
-    client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len); //creates a new socket to handle clients
-    if (client_fd < 0){
-        perror("accept failed");
-        exit(1);
+
+    for (int i = 0; i < MAX_CLIENTS; i++){
+        clients[i].fd = -1; //initialise all clients to being empty
     }
 
-    printf("Client connected from %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+    clients[0].fd = server_fd; //server is always 0
+    clients[0].events = POLLIN; //meaning watch for incoming connections
+
     
     while(1){
-        memset(buffer, 0, BUFFER_SIZE); //calloc
-        bytes_read = recv(client_fd, buffer, BUFFER_SIZE -1 , 0); //waits for data from the client and stores it in bytes_read
-        
-        if (bytes_read <= 0){
-            if (bytes_read == 0){
-                printf("client disconnected\n");
-            } else {
-                perror("recv error");
-            }
-            break;
-        }            
-
-        printf("recieved %s", buffer);
-        if (send(client_fd, buffer, bytes_read, 0) <= 0){ //sends message back to sender
-            perror("send failed");
+        int ready = poll(clients, MAX_CLIENTS +1, -1);
+        if (ready < 0){
+            perror("poll failed");
             break;
         }
-    }
+        
+        if (clients[0].revents & POLLIN){ //checks if server socket has new connection
+            
+            client_len = sizeof(client_addr);
+            client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len); //creates a new socket to handle clients
+            if (client_fd < 0){
+                perror("accept failed");
+                exit(1);
+            }
 
-    close(client_fd);
+            int slot_found = 0;
+            for (int i = 1; i <= MAX_CLIENTS; i++){ // start at 1 since 0 is client
+                if (clients[i].fd ==-1){
+                    clients[i].fd = client_fd;
+                    clients[i].events = POLLIN; //tells to watch for incoming messages
+                    num_clients++;
+                    slot_found = 1;
+                    printf("New client added to slot %d. Total number of clients: %d\n", i, num_clients);
+                    break;
+                }
+            }
+            if (!slot_found){
+                printf("server full. rejecting client\n");
+                close(client_fd);
+            }
+        }
+
+
+        for (int i = 1; i <= MAX_CLIENTS; i++){
+            if (clients[i].fd == -1) continue;
+            if (clients[i].revents & POLLIN){ //bitwise and 
+                memset(buffer, 0, BUFFER_SIZE); //calloc
+                bytes_read = recv(clients[i].fd, buffer, BUFFER_SIZE -1 , 0); //waits for data from the client and stores it in bytes_read
+                
+                if (bytes_read <= 0){
+                    if (bytes_read == 0){
+                        printf("client disconnected, total number of clients: %d\n", num_clients -1);
+                    } else {
+                        perror("recv error");
+                    }
+                    close(clients[i].fd);
+                    clients[i].fd = -1;
+                    num_clients--;
+                    continue;
+                }            
+
+                printf("recieved %s", buffer);
+                if (send(clients[i].fd, buffer, bytes_read, 0) <= 0){ //sends message back to sender
+                    perror("send failed");
+                    break;
+                }
+                
+            }
+        }
+
+        }
+
+    for (int i = 0; i <= MAX_CLIENTS; i++){
+        close(clients[i].fd);
+    }
     close(server_fd);
     return 0;
 
