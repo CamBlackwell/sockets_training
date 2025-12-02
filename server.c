@@ -76,7 +76,7 @@ int main(){
             }
 
             int slot_found = 0;
-            for (int i = 1; i <= MAX_CLIENTS; i++){ // start at 1 since 0 is client
+            for (int i = 1; i <= MAX_CLIENTS; i++){ // start at 1 since 0 is server
                 if (clients[i].fd ==-1){
                     clients[i].fd = client_fd;
                     clients[i].events = POLLIN; //tells to watch for incoming messages

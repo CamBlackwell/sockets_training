@@ -54,7 +54,7 @@ int main(){
 
         if (fds[0].revents & POLLIN){
             if(fgets(buffer, BUFFER_SIZE, stdin) == NULL){
-                printf("Disconnecting...");
+                printf("Disconnecting...\n");
                 break;
             }
             if (send(client_fd, buffer, strlen(buffer), 0) < 0){
@@ -67,7 +67,7 @@ int main(){
             memset(buffer, 0, BUFFER_SIZE);
             bytes_read = recv(client_fd, buffer, BUFFER_SIZE-1, 0);
             if (bytes_read <= 0){
-                printf("server disconnected");
+                printf("server disconnected\n");
                 break;
             }
             printf("SERVER: %s\n", buffer);
